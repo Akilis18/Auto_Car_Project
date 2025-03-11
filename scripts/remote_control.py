@@ -11,15 +11,17 @@ def main(stdscr):
     while True:
         key = stdscr.getch()  # Wait for key press
         if key == ord('w'):
-            serial_conn.send_command("FORWARD")
+            serial_conn.send_command("F")
         elif key == ord('s'):
-            serial_conn.send_command("BACKWARD")
+            serial_conn.send_command("B")
         elif key == ord('a'):
-            serial_conn.send_command("LEFT")
+            serial_conn.send_command("L")
         elif key == ord('d'):
-            serial_conn.send_command("RIGHT")
-        elif key == ord(' '):
-            serial_conn.send_command("STOP")
+            serial_conn.send_command("R")
+        elif key == ord('x'):
+            serial_conn.send_command("Q")
+        elif key == ord('c'):
+            serial_conn.send_command("C")
         elif key == ord('q'):  # Quit program
             break
 

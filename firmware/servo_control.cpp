@@ -12,12 +12,12 @@ void servoSetup() {
 }
 
 void servoLeft() {
-    myServo.write(45);
+    myServo.write(50);
     Serial.println("Servo Left");
 }
 
 void servoRight() {
-    myServo.write(135);
+    myServo.write(130);
     Serial.println("Servo Right");
 }
 

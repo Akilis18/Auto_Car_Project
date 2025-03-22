@@ -1,4 +1,4 @@
-from remote_control import RemoteControl  # Import the class from the file containing your refactored code
+from remote_control import RemoteControl
 import cv2
 from picamera2 import Picamera2
 import threading
@@ -31,7 +31,12 @@ def main():
     while not stop_event.is_set():  # Keep running until stop_event is set
         frame1 = picam1.capture_array()
         frame2 = picam2.capture_array()
-        frame2 = cv2.flip(frame2, -1)
+
+        # Convert from RGB (Picamera2 output) to BGR (OpenCV default)
+        frame1 = cv2.cvtColor(frame1, cv2.COLOR_RGB2BGR)
+        frame2 = cv2.cvtColor(frame2, cv2.COLOR_RGB2BGR)
+
+        frame2 = cv2.flip(frame2, -1)  # Keep the flip operation
 
         cv2.imshow("Cam 1", frame1)
         cv2.imshow("Cam 2", frame2)

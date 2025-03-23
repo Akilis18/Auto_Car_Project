@@ -1,4 +1,5 @@
 from remote_control import RemoteControl
+from lane_detection import LaneDetector
 import cv2
 from picamera2 import Picamera2
 import threading
@@ -15,38 +16,52 @@ def main():
     control_thread = threading.Thread(target=run_remote_control, daemon=True)
     control_thread.start()
 
-    # Initialize cameras
-    picam1 = Picamera2(0)
-    picam2 = Picamera2(1)
+    # Initialize lane detector
+    lane_detector = LaneDetector(kernel_size=5, low_t=50, high_t=150)
 
-    config1 = picam1.create_preview_configuration()
-    config2 = picam2.create_preview_configuration()
+    # Initialize cameras (0 = Rear camera, 1 = Front camera)
+    rear_cam = Picamera2(0)
+    front_cam = Picamera2(1)
 
-    picam1.configure(config1)
-    picam2.configure(config2)
+    # Configure cameras for optimized performance (640x480 for speed)
+    rear_config = rear_cam.create_preview_configuration(main={"size": (640, 480)})
+    front_config = front_cam.create_preview_configuration(main={"size": (640, 480)})
 
-    picam1.start()
-    picam2.start()
+    rear_cam.configure(rear_config)
+    front_cam.configure(front_config)
 
-    while not stop_event.is_set():  # Keep running until stop_event is set
-        frame1 = picam1.capture_array()
-        frame2 = picam2.capture_array()
+    # Start both cameras
+    rear_cam.start()
+    front_cam.start()
 
-        # Convert from RGB (Picamera2 output) to BGR (OpenCV default)
-        frame1 = cv2.cvtColor(frame1, cv2.COLOR_RGB2BGR)
-        frame2 = cv2.cvtColor(frame2, cv2.COLOR_RGB2BGR)
+    while not stop_event.is_set():
+        # Capture frames
+        rear_frame = rear_cam.capture_array()  # Rear camera (RGB)
+        front_frame = front_cam.capture_array()  # Front camera (RGB)
 
-        frame2 = cv2.flip(frame2, -1)  # Keep the flip operation
+        # Flip the front frame for correct orientation
+        front_frame = cv2.flip(front_frame, -1)
 
-        cv2.imshow("Cam 1", frame1)
-        cv2.imshow("Cam 2", frame2)
+        # Convert from RGB to BGR for OpenCV
+        rear_frame = cv2.cvtColor(rear_frame, cv2.COLOR_RGB2BGR)
+        front_frame = cv2.cvtColor(front_frame, cv2.COLOR_RGB2BGR)
 
+        # Apply lane detection
+        rear_frame = lane_detector.process_frame(rear_frame)
+        front_frame = lane_detector.process_frame(front_frame)
+
+        # Display both frames
+        cv2.imshow("Rear Camera - Lane Detection", rear_frame)
+        cv2.imshow("Front Camera - Lane Detection", front_frame)
+
+        # Exit on 'q' key press
         if cv2.waitKey(1) & 0xFF == ord('q'):
-            stop_event.set()  # Signal both threads to stop
+            stop_event.set()
             break
 
-    picam1.stop()
-    picam2.stop()
+    # Stop cameras and close windows
+    rear_cam.stop()
+    front_cam.stop()
     cv2.destroyAllWindows()
 
 if __name__ == "__main__":

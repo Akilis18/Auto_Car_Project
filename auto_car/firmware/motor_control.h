@@ -2,8 +2,8 @@
 #define MOTOR_CONTROL_H
 
 void motorSetup();
-void motorForward();
-void motorBackward();
+void motorForward(float targetSpeed);
+void motorBackward(float targetSpeed);
 void motorStop();
 
 #endif

@@ -6,31 +6,42 @@
 
 void processSerialCommand() {
     if (Serial.available()) {
-        char command = Serial.read();
+        // Get command
+        String command = Serial.readString();
+        char cmd = command.charAt(0);
 
-        switch (command) {
-            case 'F':
-                motorForward();
-                break;
-            case 'B':
-                motorBackward();
-                break;
-            case 'Q':
+        if (cmd == 'F' || cmd == 'B' || cmd == 'Q') {
+            int delimiterIdx = command.indexOf(',');
+
+            String speedStr = command.substring(delimiterIdx + 1); // Get speed value
+            float carSpeed = speedStr.toFloat();
+
+            if (cmd == 'F') {
+                motorForward(carSpeed);
+            }
+            else if (cmd == 'B') {
+                motorBackward(carSpeed);
+            }
+            else {
                 motorStop();
-                break;
-            case 'L':
-                servoLeft();
-                break;
-            case 'R':
-                servoRight();
-                break;
-            case 'C':
-                servoCenter();
-                break;
-            case 'E':
-                Serial.print("Encoder: ");
-                Serial.println(getEncoderCount());
-                break;
+            }
+        }
+        else {
+            switch (cmd) {
+                case 'L':
+                  servoLeft();
+                  break;
+                case 'R':
+                  servoRight();
+                  break;
+                case 'C':
+                  servoCenter();
+                  break;
+                case 'E':
+                  Serial.print("Encoder: ");
+                  Serial.println(getEncoderCount());
+                  break;  
+            }
         }
     }
 }

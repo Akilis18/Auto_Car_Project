@@ -4,6 +4,8 @@ import serial_comm
 class RemoteControl:
     def __init__(self, port="/dev/ttyUSB0", baudrate=115200):
         self.serial_conn = serial_comm.SerialComm(port=port, baudrate=baudrate)
+        self.speed = 0.0
+        self.speed_step = 0.1
 
     def send_command(self, command):
         self.serial_conn.send_command(command)
@@ -22,17 +24,22 @@ class RemoteControl:
         while True:
             key = stdscr.getch()  # Wait for key press
             if key == ord('w'):
-                self.send_command("F")
+                self.speed = min(self.speed + self.speed_step, 1.0)
+                self.send_command(f"F,{self.speed}")
             elif key == ord('s'):
-                self.send_command("B")
+                self.speed = max(self.speed - self.speed_step, -1.0)
+                self.send_command(f"B,{self.speed}")
             elif key == ord('a'):
                 self.send_command("L")
             elif key == ord('d'):
                 self.send_command("R")
             elif key == ord('x'):
-                self.send_command("Q")
+                self.speed = 0.0
+                self.send_command(f"Q,{self.speed}")
             elif key == ord('c'):
                 self.send_command("C")
+            elif key == ord('e'):
+                self.send_command("E")
             elif key == ord('q'):  # Quit program
                 break
 

@@ -14,4 +14,5 @@ void setup() {
 
 void loop() {
     processSerialCommand();  // Handle UART commands
+    servoUpdate();
 }

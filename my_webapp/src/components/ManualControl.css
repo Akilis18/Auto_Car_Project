@@ -1,0 +1,14 @@
+/* ManualControl.css */
+.manual-control {
+  margin-top: 2rem;
+  text-align: center;
+}
+
+.joystick-placeholder {
+  width: 200px;
+  height: 200px;
+  margin: 1rem auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

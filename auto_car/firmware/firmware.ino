@@ -14,5 +14,8 @@ void setup() {
 
 void loop() {
     processSerialCommand();  // Handle UART commands
-    servoUpdate();
+    long count = getEncoderCount();
+    Serial.println(count);
+    Serial.println(((count*60)/11.0)/78.0);
+    delay(1000);
 }

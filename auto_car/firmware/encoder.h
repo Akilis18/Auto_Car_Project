@@ -2,6 +2,6 @@
 #define ENCODER_H
 
 void encoderSetup();
-int getEncoderCount();
+long getEncoderCount();
 
 #endif

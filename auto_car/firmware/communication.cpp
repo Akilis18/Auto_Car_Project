@@ -6,42 +6,21 @@
 
 void processSerialCommand() {
     if (Serial.available()) {
-        // Get command
-        String command = Serial.readString();
-        char cmd = command.charAt(0);
-
-        if (cmd == 'F' || cmd == 'B' || cmd == 'Q') {
-            int delimiterIdx = command.indexOf(',');
-
-            String speedStr = command.substring(delimiterIdx + 1); // Get speed value
-            float carSpeed = speedStr.toFloat();
-
-            if (cmd == 'F') {
-                motorForward(carSpeed);
-            }
-            else if (cmd == 'B') {
-                motorBackward(carSpeed);
-            }
-            else {
-                motorStop();
-            }
+        String input = Serial.readStringUntil('\n');
+        input.trim();
+        
+        if (input.startsWith("SPEED:")) {
+            int speedValue = input.substring(6).toInt();
+            setMotorSpeed(speedValue);  // from motor_control.cpp
         }
-        else {
-            switch (cmd) {
-                case 'L':
-                  servoLeft();
-                  break;
-                case 'R':
-                  servoRight();
-                  break;
-                case 'C':
-                  servoCenter();
-                  break;
-                case 'E':
-                  Serial.print("Encoder: ");
-                  Serial.println(getEncoderCount());
-                  break;  
-            }
+        else if (input.startsWith("STEER:")) {
+            int angle = input.substring(6).toInt();
+            setServoAngle(angle);  // from servo_control.cpp
+        }
+        else if (input == "E") {
+            long count = getEncoderCount();
+            Serial.print("ENC:");
+            Serial.print(count);
         }
     }
 }

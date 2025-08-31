@@ -1,7 +1,5 @@
-# main.py
 """
-This script serves as the entry point for the application.
-It orchestrates the entire system.
+Main entry point for Raspberry Pi GPIO car control
 """
 
 import threading
@@ -10,9 +8,11 @@ import sys
 import curses
 from datetime import datetime
 import pathlib
+import time
 
 import control.manual_control as manual_control
 from perception.sensors.camera_node import CameraNode
+from perception.lane_detection import lane_origin
 
 
 class CarApp:
@@ -27,8 +27,9 @@ class CarApp:
     def suppress_libpng_warnings(self):
         sys.stderr = open('/dev/null', 'w')
 
+    # ------------------ Manual Control ------------------
     def run_remote_control(self):
-        remote = manual_control.RemoteControl()
+        remote = manual_control.RemoteControl()  # Uses RPI_GPIO_Car instance
 
         def run_with_feedback(stdscr):
             stdscr.nodelay(True)
@@ -42,30 +43,29 @@ class CarApp:
                     stdscr.addstr(2, 0, f"Key pressed: {chr(key) if 32 <= key <= 126 else key}   ")
                     stdscr.refresh()
 
+                    # --- Map keys to GPIOZero methods ---
                     if key == ord('w'):
-                        remote.send_command("SPEED:255")
+                        remote.car.Car_Run(255)
                     elif key == ord('s'):
-                        remote.send_command("SPEED:-180")
+                        remote.car.Car_Back(180)
                     elif key == ord('a'):
-                        remote.send_command("STEER:60")
+                        remote.car.Ctrl_Servo(50)
                     elif key == ord('d'):
-                        remote.send_command("STEER:120")
+                        remote.car.Ctrl_Servo(130)
                     elif key == ord('x'):
-                        remote.send_command("SPEED:0")
+                        remote.car.Car_Stop()
                     elif key == ord('c'):
-                        remote.send_command("STEER:90")
-                    elif key == ord('e'):
-                        remote.send_command("E")
+                        remote.car.Ctrl_Servo(90)
                     elif key == ord('q'):
                         self.stop_event.set()
                         break
 
         curses.wrapper(run_with_feedback)
-        remote.close_connection()
 
+    # ------------------ Camera Handling ------------------
     def run_cameras(self):
         cam_rear = CameraNode(camera_index=0, resolution=(640, 480))
-        cam_front = CameraNode(camera_index=1, resolution=(640, 480))
+        cam_front = CameraNode(camera_index=1, resolution=(640, 480), flip_front=True)
 
         cam_rear.start()
         cam_front.start()
@@ -75,8 +75,10 @@ class CarApp:
                 frame_rear = cam_rear.get_frame()
                 frame_front = cam_front.get_frame()
 
-                cv2.imshow("Front", frame_front)
-                cv2.imshow("Rear", frame_rear)
+                if frame_front is not None:
+                    cv2.imshow("Front", frame_front)
+                if frame_rear is not None:
+                    cv2.imshow("Rear", frame_rear)
 
                 key = cv2.waitKey(1) & 0xFF
                 if key == ord('q'):
@@ -95,12 +97,63 @@ class CarApp:
             cam_front.stop()
             cv2.destroyAllWindows()
 
+    # ------------------ Autonomous Mode ------------------
     def auto_mode(self):
         print("Auto mode starting...")
-        # Placeholder for autonomous driving logic (lane detection, object detection, etc.)
-        self.run_cameras()
-        print("Auto mode finished.")
 
+        remote = manual_control.RemoteControl()
+        remote.car.Car_Stop()
+        remote.car.Ctrl_Servo(90)  # Center steering
+
+        cam = CameraNode(camera_index=1, resolution=(640, 480), flip_front=True)
+        cam.start()
+
+        try:
+            while not self.stop_event.is_set():
+                frame = cam.get_frame()
+                if frame is None:
+                    continue
+
+                result_frame, success, lane_info = lane_origin.process_one_frame(
+                    frame, plot=False, show_real_time=True
+                )
+
+                if success and lane_info:
+                    steer_deg = lane_info.get("steer_deg", 0.0)
+
+                    # --- Control Logic ---
+                    base_speed = 150          # Base PWM speed
+                    steering_gain = 1.5
+
+                    steer_angle = 90 + steer_deg
+                    steer_angle = max(40, min(140, steer_angle))
+
+                    speed = base_speed - steering_gain * abs(steer_deg)
+                    speed = max(130, min(200, speed))
+
+                    # --- GPIOZero Method Calls ---
+                    remote.car.Car_Run(int(speed))
+                    remote.car.Ctrl_Servo(int(steer_angle))
+                else:
+                    remote.car.Car_Stop()
+
+                # Optional: display processed frame
+                # cv2.imshow("Auto Mode - Lane Detection", result_frame if result_frame is not None else frame)
+
+                key = cv2.waitKey(1) & 0xFF
+                if key == ord('q'):
+                    self.stop_event.set()
+                    break
+
+        finally:
+            remote.car.Car_Stop()
+            remote.car.Ctrl_Servo(90)
+            cam.stop()
+            time.sleep(0.2)
+            cv2.destroyAllWindows()
+            print("Auto mode finished.")
+
+    # ------------------ Manual Mode ------------------
     def manual_mode(self):
         print("Manual mode starting...")
         control_thread = threading.Thread(target=self.run_remote_control, daemon=True)
@@ -113,6 +166,7 @@ class CarApp:
         cam_thread.join()
         print("Manual mode finished.")
 
+    # ------------------ Start ------------------
     def start(self, mode="manual"):
         self.suppress_libpng_warnings()
 

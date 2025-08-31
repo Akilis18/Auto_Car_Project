@@ -1,19 +1,22 @@
 import curses
 import serial
 import time
+import os
+import sys
+
+# Ensure the firmware directory is always on sys.path, regardless of current working directory
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+FIRMWARE_DIR = os.path.abspath(os.path.join(CURRENT_DIR, "../firmware"))
+if FIRMWARE_DIR not in sys.path:
+    sys.path.insert(0, FIRMWARE_DIR)
+
+from RPI_car import RPI_GPIO_Car  # Adjusted import to match the class name
 
 class RemoteControl:
-    def __init__(self, port="/dev/ttyUSB0", baudrate=115200):
-        self.serial_conn = serial.Serial(port=port, baudrate=baudrate, timeout=1)
-        time.sleep(2)  # Give time for Arduino to reset
-
-    def send_command(self, command):
-        if self.serial_conn.is_open:
-            self.serial_conn.write((command + '\n').encode('utf-8'))
-
-    def close_connection(self):
-        if self.serial_conn.is_open:
-            self.serial_conn.close()
+    def __init__(self):
+        self.car = RPI_GPIO_Car()
+        self.car.Car_Stop()
+        self.car.Ctrl_Servo(90)  # Center steering
 
     def start(self):
         curses.wrapper(self.run)
@@ -25,27 +28,23 @@ class RemoteControl:
 
         while True:
             key = stdscr.getch()
-            stdscr.addstr(2, 0, f"Key pressed: {chr(key) if key != -1 else 'None'}      ")  # show key
+            stdscr.addstr(2, 0, f"Key pressed: {chr(key) if key != -1 else 'None'}      ")
             stdscr.refresh()
 
             if key == ord('w'):
-                self.send_command("SPEED:255")
+                self.car.Car_Run(255)  # Move forward at 50% speed
             elif key == ord('s'):
-                self.send_command("SPEED:-180")
+                self.car.Car_Back(150)
             elif key == ord('a'):
-                self.send_command("STEER:60")
+                self.car.Ctrl_Servo(50)  # Turn left
             elif key == ord('d'):
-                self.send_command("STEER:120")
+                self.car.Ctrl_Servo(130)
             elif key == ord('x'):
-                self.send_command("SPEED:0")
+                self.car.Car_Stop()
             elif key == ord('c'):
-                self.send_command("STEER:90")
-            elif key == ord('e'):
-                self.send_command("E")
+                self.car.Ctrl_Servo(90)  # Center steering
             elif key == ord('q'):
                 break
-
-        self.close_connection()
 
 if __name__ == "__main__":
     remote_control = RemoteControl()

@@ -10,9 +10,12 @@ from datetime import datetime
 import pathlib
 import time
 
-import control.manual_control as manual_control
 from perception.sensors.camera_node import CameraNode
 from perception.lane_detection import lane_origin
+from planning import decision_maker
+
+import control.manual_control as manual_control
+import control.trajectory_follower as trajectory_follower
 
 
 class CarApp:
@@ -119,7 +122,21 @@ class CarApp:
                 )
 
                 if success and lane_info:
-                    steer_deg = lane_info.get("steer_deg", 0.0)
+                    pp = trajectory_follower.PurePursuit(
+                        wheelbase=2.8,
+                        lookahead_m=15.0,
+                        ploty=lane_info.get("ploty"),
+                        leftx=lane_info.get("leftx"),
+                        rightx=lane_info.get("rightx"),
+                        lefty=lane_info.get("lefty"),
+                        righty=lane_info.get("righty"),
+                        center_offset=lane_info.get("center_offset"),
+                        YM_PER_PIX=lane_info.get("YM_PER_PIX", 7.0 / 400),
+                        XM_PER_PIX=lane_info.get("XM_PER_PIX", 3.7 / 255),
+                    )
+
+                    # steer_deg = lane_info.get("steer_deg", 0.0)
+                    steer_deg = pp.compute_turn_command()[1]
 
                     # --- Control Logic ---
                     base_speed = 150          # Base PWM speed

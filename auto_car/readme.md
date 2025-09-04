@@ -13,6 +13,9 @@ auto_car/
 ├── ├── ├── map_handler.py
 ├── ├── object_detection/
 ├── ├── ├── object_detection.py
+├── ├── lane_detection/
+├── ├── ├── edge_detection.py
+├── ├── ├── lane_origin.py
 ├── planning/          # Handles path planning and traffic rules appliances
 ├── ├── route_generation.py
 ├── ├── obstacle_avoidance.py

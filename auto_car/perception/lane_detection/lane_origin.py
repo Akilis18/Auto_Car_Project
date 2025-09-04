@@ -14,15 +14,6 @@ from perception.lane_detection import edge_detection as edge  # Handles the dete
 # https://automaticaddison.com
 # Description: Implementation of the Lane class
 
-# Make sure the video file is in the same directory as your code
-filename = "orig_lane_detection_1.mp4"
-file_size = (1920, 1080)  # Assumes 1920x1080 mp4
-scale_ratio = 1  # Option to scale to fraction of original size.
-
-# We want to save the output to a video file
-output_filename = "orig_lane_detection_1_lanes.mp4"
-output_frames_per_second = 20.0
-
 # Global variables
 prev_leftx = None
 prev_lefty = None
@@ -72,10 +63,10 @@ class Lane:
         # You need to find these corners manually.
         self.roi_points = np.float32(
             [
-                (int(0.234375 * width), int(0.535417 * height)),  # Top-left corner
-                (int(0.068750 * width), int(0.633333 * height)),  # Bottom-left corner
-                (int(0.889062 * width), int(0.618750 * height)),  # Bottom-right corner
-                (int(0.707812 * width), int(0.527083 * height)),  # Top-right corner
+                (int(0.284375 * width), int(0.664583 * height)),  # Top-left corner
+                (int(0.012500 * width), int(0.914583 * height)),  # Bottom-left corner
+                (int(0.912500 * width), int(0.916667 * height)),  # Bottom-right corner
+                (int(0.648438 * width), int(0.664583 * height)),  # Top-right corner
             ]
         )
 
@@ -224,6 +215,9 @@ class Lane:
             ax2.plot(self.histogram)
             ax2.set_title("Histogram Peaks")
             plt.show()
+            images_dir = ensure_images_dir()
+            fig_path = os.path.join(images_dir, "histogram.png")
+            figure.savefig(fig_path)
 
         return self.histogram
 
@@ -268,6 +262,8 @@ class Lane:
 
         return image_copy
 
+    #########################################################
+    '''
     def compute_turn_command(
         self,
         wheelbase_m: float = 2.8,
@@ -330,6 +326,8 @@ class Lane:
         signed_radius_m = float("inf") if abs(kappa) < 1e-6 else 1.0 / kappa
 
         return direction, steer_deg, signed_radius_m
+    '''
+    #################################################
 
     def get_lane_line_previous_window(self, left_fit, right_fit, plot=False):
         """
@@ -392,6 +390,7 @@ class Lane:
         rightx = nonzerox[right_lane_inds]
         righty = nonzeroy[right_lane_inds]
 
+        ##################################
         global prev_leftx2
         global prev_lefty2
         global prev_rightx2
@@ -405,15 +404,18 @@ class Lane:
             lefty = prev_lefty2
             rightx = prev_rightx2
             righty = prev_righty2
+        ##################################
 
         self.leftx = leftx
         self.rightx = rightx
         self.lefty = lefty
         self.righty = righty
 
+        # Fit a second order polynomial curve to each lane line
         left_fit = np.polyfit(lefty, leftx, 2)
         right_fit = np.polyfit(righty, rightx, 2)
 
+        ##################################
         # Add the latest polynomial coefficients
         prev_left_fit2.append(left_fit)
         prev_right_fit2.append(right_fit)
@@ -424,14 +426,17 @@ class Lane:
             prev_right_fit2.pop(0)
             left_fit = sum(prev_left_fit2) / len(prev_left_fit2)
             right_fit = sum(prev_right_fit2) / len(prev_right_fit2)
+        ##############
 
         self.left_fit = left_fit
         self.right_fit = right_fit
 
+        ##############
         prev_leftx2 = leftx
         prev_lefty2 = lefty
         prev_rightx2 = rightx
         prev_righty2 = righty
+        ##################################
 
         # Create the x and y values to plot on the image
         ploty = np.linspace(
@@ -491,6 +496,9 @@ class Lane:
             ax2.set_title("Warped Frame")
             ax3.set_title("Warped Frame With Search Window")
             plt.show()
+            images_dir = ensure_images_dir()
+            fig_path = os.path.join(images_dir, "search_window.png")
+            figure.savefig(fig_path)
 
     def get_lane_line_indices_sliding_windows(self, plot=False):
         """
@@ -528,7 +536,6 @@ class Lane:
         no_of_windows = self.no_of_windows
 
         for window in range(no_of_windows):
-
             # Identify window boundaries in x and y (and right and left)
             win_y_low = self.warped_frame.shape[0] - (window + 1) * window_height
             win_y_high = self.warped_frame.shape[0] - window * window_height
@@ -588,6 +595,8 @@ class Lane:
 
         # Fit a second order polynomial curve to the pixel coordinates for
         # the left and right lane lines
+        
+        ################################
         left_fit = None
         right_fit = None
 
@@ -608,11 +617,12 @@ class Lane:
         # x and y are None, means no lane lines detected
         if leftx is None or lefty is None or rightx is None or righty is None:
             return None, None
-        
+        ################################
 
         left_fit = np.polyfit(lefty, leftx, 2)
         right_fit = np.polyfit(righty, rightx, 2)
 
+        ################################
         # Add the latest polynomial coefficients
         prev_left_fit.append(left_fit)
         prev_right_fit.append(right_fit)
@@ -623,14 +633,17 @@ class Lane:
             prev_right_fit.pop(0)
             left_fit = sum(prev_left_fit) / len(prev_left_fit)
             right_fit = sum(prev_right_fit) / len(prev_right_fit)
+        ################################
 
         self.left_fit = left_fit
         self.right_fit = right_fit
 
+        ################################
         prev_leftx = leftx
         prev_lefty = lefty
         prev_rightx = rightx
         prev_righty = righty
+        ################################
 
         if plot == True:
 
@@ -666,6 +679,9 @@ class Lane:
             ax2.set_title("Warped Frame with Sliding Windows")
             ax3.set_title("Detected Lane Lines with Sliding Windows")
             plt.show()
+            images_dir = ensure_images_dir()
+            fig_path = os.path.join(images_dir, "sliding_window.png")
+            figure.savefig(fig_path)
 
         return self.left_fit, self.right_fit
 
@@ -690,12 +706,12 @@ class Lane:
         # along the x and y axis of the video frame.
         # sxbinary is a matrix full of 0s (black) and 255 (white) intensity values
         # Relatively light pixels get made white. Dark pixels get made black.
-        _, sxbinary = edge.threshold(hls[:, :, 1], thresh=(80, 255))
+        _, sxbinary = edge.threshold(hls[:, :, 1], thresh=(100, 255))
         sxbinary = edge.blur_gaussian(sxbinary, ksize=3)  # Reduce noise
 
         # 1s will be in the cells with the highest Sobel derivative values
         # (i.e. strongest lane line edges)
-        sxbinary = edge.mag_thresh(sxbinary, sobel_kernel=3, thresh=(80, 255))
+        sxbinary = edge.mag_thresh(sxbinary, sobel_kernel=3, thresh=(100, 255))
 
         ######################## Isolate possible lane lines ######################
 
@@ -707,7 +723,7 @@ class Lane:
         # White in the regions with the purest hue colors (e.g. >130...play with
         # this value for best results).
         s_channel = hls[:, :, 2]  # use only the saturation channel dataq
-        _, s_binary = edge.threshold(s_channel, (80, 255))
+        _, s_binary = edge.threshold(s_channel, (100, 255))
 
         # Perform binary thresholding on the R (red) channel of the
         # original BGR video frame.
@@ -715,7 +731,7 @@ class Lane:
         # White in the regions with the richest red channel values (e.g. >120).
         # Remember, pure white is bgr(255, 255, 255).
         # Pure yellow is bgr(0, 255, 255). Both have high red channel values.
-        _, r_thresh = edge.threshold(frame[:, :, 2], thresh=(80, 255))
+        _, r_thresh = edge.threshold(frame[:, :, 2], thresh=(100, 255))
 
         # Lane lines should be pure in color and have high red channel values
         # Bitwise AND operation to reduce noise and black-out any pixels that
@@ -764,6 +780,7 @@ class Lane:
         # Draw lane on the warped blank image
         cv2.fillPoly(color_warp, np.array([pts], dtype=np.int32), (0, 255, 0))
 
+        ################################
         # --- Draw the mid line (target path) in blue ---
         mid_fitx = (self.left_fitx + self.right_fitx) / 2
         mid_pts = np.array([np.transpose(np.vstack([mid_fitx, self.ploty]))], dtype=np.int32)
@@ -774,6 +791,7 @@ class Lane:
             if len(self.warped_frame.shape) == 2 or self.warped_frame.shape[2] == 1 \
             else self.warped_frame.copy()
         cv2.polylines(warped_frame_with_mid, mid_pts, isClosed=False, color=(255, 0, 0), thickness=8)
+        ################################
 
         # Warp the blank back to original image space using inverse perspective
         # matrix (Minv)
@@ -786,11 +804,13 @@ class Lane:
         # Combine the result with the original image
         result = cv2.addWeighted(self.orig_frame, 1, newwarp, 0.3, 0)
 
+        ################################
         # Output center lane waypoints to terminal if requested
         if print_center_line:
             waypoints = list(zip(mid_fitx.astype(int), self.ploty.astype(int)))
             # print("Center lane waypoints (x, y):")
             # print(waypoints)
+        ################################
 
         if plot == True:
             # Plot the figures
@@ -1047,17 +1067,24 @@ class LaneDetector:
                     final_frame = frame_with_lanes
 
                 # 計算轉向建議
-                direction, steer_deg, signed_R = self.lane_obj.compute_turn_command()
+                # direction, steer_deg, signed_R = self.lane_obj.compute_turn_command()
                 
                 # 準備車道資訊
                 lane_info = {
                     'left_curvature': self.lane_obj.left_curvem,
                     'right_curvature': self.lane_obj.right_curvem,
                     'center_offset': self.lane_obj.center_offset,
-                    'turn_direction': direction,
-                    'steer_deg': steer_deg,
-                    'signed_radius_m': signed_R,
-                    'detection_method': 'sliding_window' if use_sliding_window else 'previous_window'
+                    # 'turn_direction': direction,
+                    # 'steer_deg': steer_deg,
+                    # 'signed_radius_m': signed_R,
+                    'detection_method': 'sliding_window' if use_sliding_window else 'previous_window',
+                    'ploty': self.lane_obj.ploty,
+                    'leftx': self.lane_obj.leftx,
+                    'rightx': self.lane_obj.rightx,
+                    'lefty': self.lane_obj.lefty,
+                    'righty': self.lane_obj.righty,
+                    'YM_PER_PIX': self.lane_obj.YM_PER_PIX,
+                    'XM_PER_PIX': self.lane_obj.XM_PER_PIX
                 }
                 
                 return final_frame, True, lane_info
@@ -1151,9 +1178,8 @@ def ensure_images_dir():
     return images_dir
 
 if __name__ == "__main__":
-    # main()
-    frame = cv2.imread("./images/front/front_20250825_234733_488309.jpg")
-    result_frame, success, lane_info = process_one_frame(frame, plot=False, show_real_time=True)
+    frame = cv2.imread("./images/front/front_20250903_230126_261380.jpg")
+    result_frame, success, lane_info = process_one_frame(frame, plot=True, show_real_time=True)
     print(lane_info)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
